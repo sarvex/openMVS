@@ -51,10 +51,7 @@ def whereis(afile):
     """
     return directory in which afile is, None if not found. Look in PATH
     """
-    if sys.platform.startswith('win'):
-        cmd = "where"
-    else:
-        cmd = "which"
+    cmd = "where" if sys.platform.startswith('win') else "which"
     try:
         ret = subprocess.run([cmd, afile], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
         return os.path.split(ret.stdout.decode())[0]
@@ -66,10 +63,14 @@ def find(afile):
     """
     As whereis look only for executable on linux, this find look for all file type
     """
-    for d in os.environ['PATH'].split(PATH_DELIM):
-        if os.path.isfile(os.path.join(d, afile)):
-            return d
-    return None
+    return next(
+        (
+            d
+            for d in os.environ['PATH'].split(PATH_DELIM)
+            if os.path.isfile(os.path.join(d, afile))
+        ),
+        None,
+    )
 
 # Try to find openMVS binaries in PATH
 OPENMVS_BIN = whereis("ReconstructMesh")
@@ -144,7 +145,7 @@ CONF.input_scene = CONF.input_scene.replace('_dense','').replace('_mesh','').rep
 
 # Absolute path for input directory
 if len(CONF.input_scene) < 10 or CONF.input_scene[-9:] != '_XXXX.mvs':
-    sys.exit("%s: invalid scene name" % CONF.input_scene)
+    sys.exit(f"{CONF.input_scene}: invalid scene name")
 
 match CONF.openMVS_module:
   case 'ReconstructMesh':
@@ -156,25 +157,29 @@ match CONF.openMVS_module:
   case _:
     moduleSuffix = '_dense.mvs'
 
-printout("# Module {} start #".format(CONF.openMVS_module), colour=RED, effect=BOLD)
-for scene_name in glob.glob(os.path.abspath(os.path.join(os.path.dirname(CONF.input_scene), 'scene_[0-9][0-9][0-9][0-9]'+suffix))):
-  if os.path.exists(os.path.splitext(scene_name)[0] + moduleSuffix) == False:
-    printout("# Process: %s" % os.path.basename(scene_name), colour=GREEN, effect=NO_EFFECT)
+printout(f"# Module {CONF.openMVS_module} start #", colour=RED, effect=BOLD)
+for scene_name in glob.glob(os.path.abspath(os.path.join(os.path.dirname(CONF.input_scene), f'scene_[0-9][0-9][0-9][0-9]{suffix}'))):
+    if os.path.exists(os.path.splitext(scene_name)[0] + moduleSuffix) == False:
+        printout(
+            f"# Process: {os.path.basename(scene_name)}",
+            colour=GREEN,
+            effect=NO_EFFECT,
+        )
 
-    # create a commandline for the current step
-    cmdline = [os.path.join(OPENMVS_BIN, CONF.openMVS_module), scene_name] + CONF.passthrough
-    print('Cmd: ' + ' '.join(cmdline))
+        # create a commandline for the current step
+        cmdline = [os.path.join(OPENMVS_BIN, CONF.openMVS_module), scene_name] + CONF.passthrough
+        print('Cmd: ' + ' '.join(cmdline))
 
-    if not DEBUG:
-        # Launch the current step
-        try:
-            pStep = subprocess.Popen(cmdline)
-            pStep.wait()
-            if pStep.returncode != 0:
-                printout("# Warning: step failed", colour=RED, effect=BOLD)
-        except KeyboardInterrupt:
-            sys.exit('\r\nProcess canceled by user, all files remains')
-    else:
-        print('\t'.join(cmdline))
+        if not DEBUG:
+            # Launch the current step
+            try:
+                pStep = subprocess.Popen(cmdline)
+                pStep.wait()
+                if pStep.returncode != 0:
+                    printout("# Warning: step failed", colour=RED, effect=BOLD)
+            except KeyboardInterrupt:
+                sys.exit('\r\nProcess canceled by user, all files remains')
+        else:
+            print('\t'.join(cmdline))
 
-printout("# Module {} end #".format(CONF.openMVS_module), colour=RED, effect=BOLD)
+printout(f"# Module {CONF.openMVS_module} end #", colour=RED, effect=BOLD)

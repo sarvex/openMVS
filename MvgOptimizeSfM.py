@@ -13,15 +13,12 @@ usage: run 'MvgOptimizeSfM.py' in a sub-folder to the OpenMVS project folder con
         -run script here
 """
 
+
 import os
 import sys
 import subprocess
 
-if sys.platform.startswith('win'):
-    PATH_DELIM = ';'
-else:
-    PATH_DELIM = ':'
-
+PATH_DELIM = ';' if sys.platform.startswith('win') else ':'
 # add this script's directory to PATH
 os.environ['PATH'] += PATH_DELIM + os.path.dirname(os.path.abspath(__file__))
 
@@ -33,10 +30,7 @@ def whereis(afile):
     """
         return directory in which afile is, None if not found. Look in PATH
     """
-    if sys.platform.startswith('win'):
-        cmd = "where"
-    else:
-        cmd = "which"
+    cmd = "where" if sys.platform.startswith('win') else "which"
     try:
         ret = subprocess.run([cmd, afile], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
         return os.path.split(ret.stdout.decode())[0]
